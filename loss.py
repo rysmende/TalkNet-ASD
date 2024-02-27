@@ -14,7 +14,7 @@ class lossAV(nn.Module):
         # if labels == None:
         predScore = x[:,1]
         predScore = predScore.t()
-        predScore = predScore.view(-1).detach().cpu().numpy()
+        predScore = predScore.view(-1).detach().cpu()#.numpy()
         return predScore
         # else:
         #     nloss = self.criterion(x, labels)
