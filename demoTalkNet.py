@@ -185,7 +185,7 @@ def evaluate_network(files, args):
                     embedV = s.model.forward_visual_frontend(inputV)    
                     embedA, embedV = s.model.forward_cross_attention(embedA, embedV)
                     out = s.model.forward_audio_visual_backend(embedA, embedV)
-                    score = s.lossAV.forward(out, labels = None)
+                    score = s.lossAV.forward(out)
                     scores.extend(score)
             allScore.append(scores)
         allScore = numpy.round((numpy.mean(numpy.array(allScore), axis = 0)), 1).astype(float)
