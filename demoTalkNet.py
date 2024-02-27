@@ -1,10 +1,10 @@
-import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, pickle, numpy, pdb, math, python_speech_features
+import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, \
+    pickle, numpy, pdb, math, python_speech_features
 
 from scipy import signal
-from shutil import rmtree
 from scipy.io import wavfile
 from scipy.interpolate import interp1d
-from sklearn.metrics import accuracy_score, f1_score
+from shutil import rmtree # can delete
 
 from model.faceDetector.s3fd import S3FD
 from talkNet import talkNet
@@ -34,7 +34,7 @@ parser.add_argument('--colSavePath',           type=str, default="/data08/col", 
 args = parser.parse_args()
 
 if os.path.isfile(args.pretrainModel) == False: # Download the pretrained model
-    cmd = "gdown --id %s -O %s"%(LINK, args.pretrainModel)
+    cmd = "gdown %s -O %s"%(LINK, args.pretrainModel)
     subprocess.call(cmd, shell=True, stdout=None)
 
 args.videoPath = glob.glob(os.path.join(args.videoFolder, args.videoName + '.*'))[0]
@@ -52,7 +52,7 @@ def inference_video(args):
         bboxes = DET.detect_faces(imageNumpy, conf_th=0.9, scales=[args.facedetScale])
         dets.append([])
         for bbox in bboxes:
-          dets[-1].append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]}) # dets has the frames info, bbox info, conf info
+            dets[-1].append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]}) # dets has the frames info, bbox info, conf info
         sys.stderr.write('%s-%05d; %d dets\r' % (args.videoFilePath, fidx, len(dets[-1])))
     savePath = os.path.join(args.pyworkPath,'faces.pckl')
     with open(savePath, 'wb') as fil:
@@ -82,6 +82,7 @@ def track_shot(args, sceneFaces):
         track     = []
         for frameFaces in sceneFaces:
             for face in frameFaces:
+                # can be rewritten
                 if track == []:
                     track.append(face)
                     frameFaces.remove(face)
@@ -90,12 +91,11 @@ def track_shot(args, sceneFaces):
                     if iou > iouThres:
                         track.append(face)
                         frameFaces.remove(face)
-                        continue
                 else:
                     break
         if track == []:
             break
-        elif len(track) > args.minTrack:
+        if len(track) > args.minTrack:
             frameNum    = numpy.array([ f['frame'] for f in track ])
             bboxes      = numpy.array([numpy.array(f['bbox']) for f in track])
             frameI      = numpy.arange(frameNum[0],frameNum[-1]+1)
@@ -145,13 +145,6 @@ def crop_video(args, track, cropFile):
     os.remove(cropFile + 't.avi')
     return {'track':track, 'proc_track':dets}
 
-def extract_MFCC(file, outPath):
-    # CPU: extract mfcc
-    sr, audio = wavfile.read(file)
-    mfcc = python_speech_features.mfcc(audio,sr) # (N_frames, 13)   [1s = 100 frames]
-    featuresPath = os.path.join(outPath, file.split('/')[-1].replace('.wav', '.npy'))
-    numpy.save(featuresPath, mfcc)
-
 def evaluate_network(files, args):
     # GPU: active speaker detection by pretrained TalkNet
     s = talkNet()
@@ -160,7 +153,7 @@ def evaluate_network(files, args):
     s.eval()
     allScores = []
     # durationSet = {1,2,4,6} # To make the result more reliable
-    durationSet = {1,1,1,2,2,2,3,3,4,5,6} # Use this line can get more reliable result
+    durationSet = {1, 2, 3, 4, 5, 6} # Use this line can get more reliable result
     for file in tqdm.tqdm(files, total = len(files)):
         fileName = os.path.splitext(file.split('/')[-1])[0] # Load audio and video
         _, audio = wavfile.read(os.path.join(args.pycropPath, fileName + '.wav'))
@@ -169,13 +162,12 @@ def evaluate_network(files, args):
         videoFeature = []
         while video.isOpened():
             ret, frames = video.read()
-            if ret == True:
-                face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
-                face = cv2.resize(face, (224,224))
-                face = face[int(112-(112/2)):int(112+(112/2)), int(112-(112/2)):int(112+(112/2))]
-                videoFeature.append(face)
-            else:
+            if not ret:
                 break
+            face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
+            face = cv2.resize(face, (224,224))
+            face = face[int(112-(112/2)):int(112+(112/2)), int(112-(112/2)):int(112+(112/2))]
+            videoFeature.append(face)
         video.release()
         videoFeature = numpy.array(videoFeature)
         length = min((audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100, videoFeature.shape[0] / 25)
@@ -230,73 +222,6 @@ def visualization(tracks, scores, args):
         args.nDataLoaderThread, os.path.join(args.pyaviPath,'video_out.avi'))) 
     output = subprocess.call(command, shell=True, stdout=None)
 
-def evaluate_col_ASD(tracks, scores, args):
-    txtPath = args.videoFolder + '/col_labels/fusion/*.txt' # Load labels
-    predictionSet = {}
-    for name in {'long', 'bell', 'boll', 'lieb', 'sick', 'abbas'}:
-        predictionSet[name] = [[],[]]
-    dictGT = {}
-    txtFiles = glob.glob("%s"%txtPath)
-    for file in txtFiles:
-        lines = open(file).read().splitlines()
-        idName = file.split('/')[-1][:-4]
-        for line in lines:
-            data = line.split('\t')
-            frame = int(int(data[0]) / 29.97 * 25)
-            x1 = int(data[1])
-            y1 = int(data[2])
-            x2 = int(data[1]) + int(data[3])
-            y2 = int(data[2]) + int(data[3])
-            gt = int(data[4])
-            if frame in dictGT:
-                dictGT[frame].append([x1,y1,x2,y2,gt,idName])
-            else:
-                dictGT[frame] = [[x1,y1,x2,y2,gt,idName]]    
-    flist = glob.glob(os.path.join(args.pyframesPath, '*.jpg')) # Load files
-    flist.sort()
-    faces = [[] for i in range(len(flist))]
-    for tidx, track in enumerate(tracks):
-        score = scores[tidx]                
-        for fidx, frame in enumerate(track['track']['frame'].tolist()):
-            s = numpy.mean(score[max(fidx - 2, 0): min(fidx + 3, len(score) - 1)]) # average smoothing
-            faces[frame].append({'track':tidx, 'score':float(s),'s':track['proc_track']['s'][fidx], 'x':track['proc_track']['x'][fidx], 'y':track['proc_track']['y'][fidx]})
-    for fidx, fname in tqdm.tqdm(enumerate(flist), total = len(flist)):
-        if fidx in dictGT: # This frame has label
-            for gtThisFrame in dictGT[fidx]: # What this label is ?
-                faceGT = gtThisFrame[0:4]
-                labelGT = gtThisFrame[4]
-                idGT = gtThisFrame[5]
-                ious = []
-                for face in faces[fidx]: # Find the right face in my result
-                    faceLocation = [int(face['x']-face['s']), int(face['y']-face['s']), int(face['x']+face['s']), int(face['y']+face['s'])]
-                    faceLocation_new = [int(face['x']-face['s']) // 2, int(face['y']-face['s']) // 2, int(face['x']+face['s']) // 2, int(face['y']+face['s']) // 2]
-                    iou = bb_intersection_over_union(faceLocation_new, faceGT, evalCol = True)
-                    if iou > 0.5:
-                        ious.append([iou, round(face['score'],2)])
-                if len(ious) > 0: # Find my result
-                    ious.sort()
-                    labelPredict = ious[-1][1]
-                else:                    
-                    labelPredict = 0
-                x1 = faceGT[0]
-                y1 = faceGT[1]
-                width = faceGT[2] - faceGT[0]
-                predictionSet[idGT][0].append(labelPredict)
-                predictionSet[idGT][1].append(labelGT)
-    names = ['long', 'bell', 'boll', 'lieb', 'sick', 'abbas'] # Evaluate
-    names.sort()
-    F1s = 0
-    for i in names:
-        scores = numpy.array(predictionSet[i][0])
-        labels = numpy.array(predictionSet[i][1])
-        scores = numpy.int64(scores > 0)
-        F1 = f1_score(labels, scores)
-        ACC = accuracy_score(labels, scores)
-        if i != 'abbas':
-            F1s += F1
-            print("%s, ACC:%.2f, F1:%.2f"%(i, 100 * ACC, 100 * F1))
-    print("Average F1:%.2f"%(100 * (F1s / 5)))      
-
 # Main function
 def main():
     # This preprocesstion is modified based on this [repository](https://github.com/joonson/syncnet_python).
@@ -329,8 +254,10 @@ def main():
     args.pyframesPath = os.path.join(args.savePath, 'pyframes')
     args.pyworkPath = os.path.join(args.savePath, 'pywork')
     args.pycropPath = os.path.join(args.savePath, 'pycrop')
+
     if os.path.exists(args.savePath):
         rmtree(args.savePath)
+    
     os.makedirs(args.pyaviPath, exist_ok = True) # The path for the input video, input audio, output video
     os.makedirs(args.pyframesPath, exist_ok = True) # Save all the video frames
     os.makedirs(args.pyworkPath, exist_ok = True) # Save the results in this process by the pckl method
@@ -338,13 +265,10 @@ def main():
 
     # Extract video
     args.videoFilePath = os.path.join(args.pyaviPath, 'video.avi')
-    # If duration did not set, extract the whole video, otherwise extract the video from 'args.start' to 'args.start + args.duration'
-    if args.duration == 0:
-        command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
-            (args.videoPath, args.nDataLoaderThread, args.videoFilePath))
-    else:
-        command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -ss %.3f -to %.3f -async 1 -r 25 %s -loglevel panic" % \
-            (args.videoPath, args.nDataLoaderThread, args.start, args.start + args.duration, args.videoFilePath))
+    
+    # Extract the whole video
+    command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
+        (args.videoPath, args.nDataLoaderThread, args.videoFilePath))
     subprocess.call(command, shell=True, stdout=None)
     sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the video and save in %s \r\n" %(args.videoFilePath))
     
