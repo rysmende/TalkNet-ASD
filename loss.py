@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+# from typing import Optional, Tuple, Union
 
 class lossAV(nn.Module):
     def __init__(self):
@@ -8,7 +9,7 @@ class lossAV(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.FC        = nn.Linear(256, 2)
         
-    def forward(self, x, labels=None):    
+    def forward(self, x):    
         x = x.squeeze(1)
         x = self.FC(x)
         # if labels == None:
