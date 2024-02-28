@@ -270,8 +270,8 @@ class visualConv1D(nn.Module):
     def forward(self, x):
         out = self.net(x)
         return out
+    
 class attentionLayer(nn.Module):
-
     def __init__(self, d_model, nhead, dropout=0.1):
         super(attentionLayer, self).__init__()
         self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout)
@@ -291,8 +291,10 @@ class attentionLayer(nn.Module):
         # (Tensor, Optional[Tensor], Optional[Tensor]) -> Tensor
         src = src.transpose(0, 1) # B, T, C -> T, B, C
         tar = tar.transpose(0, 1) # B, T, C -> T, B, C
-        src2 = self.self_attn(tar, src, src, attn_mask=None,
-                              key_padding_mask=None)[0]
+        src2 = self.self_attn(
+                query=tar, key=src, value=src, 
+                key_padding_mask=None, need_weights=False, attn_mask=None
+            )
         src = src + self.dropout1(src2)
         src = self.norm1(src)
 
