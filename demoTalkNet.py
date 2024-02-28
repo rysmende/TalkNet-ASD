@@ -309,7 +309,6 @@ def main():
     args.videoFilePath = os.path.join(args.pyaviPath, 'video.avi')
     
     # Extract the whole video
-    print(args.videoPath)
     command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
         (args.videoPath, args.nDataLoaderThread, args.videoFilePath))
     subprocess.call(command, shell=True, stdout=None)
