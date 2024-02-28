@@ -1,13 +1,16 @@
 import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, \
-    pickle, numpy, pdb, math, python_speech_features
+    pickle, pdb, math, python_speech_features
 
 from scipy import signal
 from scipy.io import wavfile
 from scipy.interpolate import interp1d
 from shutil import rmtree # can delete
 
+import numpy as np
+
 from model.faceDetector.s3fd import S3FD
 from talkNet import talkNet
+from talk_net import TalkNet
 
 warnings.filterwarnings("ignore")
 
@@ -15,27 +18,29 @@ LINK = '1AbN9fCf9IexMxEKXLQY2KYBlb-IhSEea'
 
 parser = argparse.ArgumentParser(description = "TalkNet Demo or Columnbia ASD Evaluation")
 
-parser.add_argument('--videoName',             type=str, default="001",   help='Demo video name')
-parser.add_argument('--videoFolder',           type=str, default="demo",  help='Path for inputs, tmps and outputs')
-parser.add_argument('--pretrainModel',         type=str, default="pretrain_TalkSet.model",   help='Path for the pretrained TalkNet model')
+parser.add_argument('--videoName',         type=str, default="001",  help='Demo video name')
+parser.add_argument('--videoFolder',       type=str, default="demo", help='Path for inputs, tmps and outputs')
+parser.add_argument('--pretrainModel',     type=str, default="pretrain_TalkSet.model",   help='Path for the pretrained TalkNet model')
 
-parser.add_argument('--nDataLoaderThread',     type=int,   default=10,   help='Number of workers')
-parser.add_argument('--facedetScale',          type=float, default=0.25, help='Scale factor for face detection, the frames will be scale to 0.25 orig')
-parser.add_argument('--minTrack',              type=int,   default=10,   help='Number of min frames for each shot')
-parser.add_argument('--numFailedDet',          type=int,   default=10,   help='Number of missed detections allowed before tracking is stopped')
-parser.add_argument('--minFaceSize',           type=int,   default=1,    help='Minimum face size in pixels')
-parser.add_argument('--cropScale',             type=float, default=0.40, help='Scale bounding box')
+parser.add_argument('--nDataLoaderThread', type=int,   default=10,   help='Number of workers')
+parser.add_argument('--facedetScale',      type=float, default=0.25, help='Scale factor for face detection, the frames will be scale to 0.25 orig')
+parser.add_argument('--minTrack',          type=int,   default=10,   help='Number of min frames for each shot')
+parser.add_argument('--numFailedDet',      type=int,   default=10,   help='Number of missed detections allowed before tracking is stopped')
+parser.add_argument('--minFaceSize',       type=int,   default=1,    help='Minimum face size in pixels')
+parser.add_argument('--cropScale',         type=float, default=0.40, help='Scale bounding box')
 
-parser.add_argument('--start',                 type=int, default=0,   help='The start time of the video')
-parser.add_argument('--duration',              type=int, default=0,  help='The duration of the video, when set as 0, will extract the whole video')
-
-parser.add_argument('--colSavePath',           type=str, default="/data08/col",  help='Path for inputs, tmps and outputs')
+parser.add_argument('--start',             type=int, default=0, help='The start time of the video')
+parser.add_argument('--duration',          type=int, default=0, help='The duration of the video, when set as 0, will extract the whole video')
+parser.add_argument('--colSavePath',       type=str, default="/data08/col", help='Path for inputs, tmps and outputs')
+parser.add_argument('--device',            type=str, default='cuda', help='Device')
 
 args = parser.parse_args()
 
-if os.path.isfile(args.pretrainModel) == False: # Download the pretrained model
-    cmd = "gdown %s -O %s"%(LINK, args.pretrainModel)
-    subprocess.call(cmd, shell=True, stdout=None)
+device = torch.device(args.device)
+
+# if os.path.isfile(args.pretrainModel) == False: # Download the pretrained model
+#     cmd = "gdown %s -O %s"%(LINK, args.pretrainModel)
+#     subprocess.call(cmd, shell=True, stdout=None)
 
 args.videoPath = glob.glob(os.path.join(args.videoFolder, args.videoName + '.*'))[0]
 args.savePath = os.path.join(args.videoFolder, args.videoName)
@@ -48,17 +53,16 @@ def get_biggest_bbox(bboxes):
     idx = bboxes[:, -1].argmax()
     return bboxes[idx]
     
-
 def inference_video(args):
     # GPU: Face detection, output is the list contains the face location and score in this frame
-    DET = S3FD(device='cuda')
+    DET = S3FD(device=device)
     flist = glob.glob(os.path.join(args.pyframesPath, '*.jpg'))
     flist.sort()
     dets = []
     for fidx, fname in enumerate(flist):
         image = cv2.imread(fname)
-        imageNumpy = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        bboxes = DET.detect_faces(imageNumpy, conf_th=0.9, scales=[args.facedetScale])
+        imagenp = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        bboxes = DET.detect_faces(imagenp, conf_th=0.9, scales=[args.facedetScale])
         bbox = get_biggest_bbox(bboxes)
         # make sure only to take one face
         dets.append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]}) # dets has the frames info, bbox info, conf info
@@ -108,17 +112,17 @@ def track_shot(args, frameFaces: list):
         # if length of tracks less than 11, continue loop
         if len(track) <= args.minTrack:
             continue
-        frameNum = numpy.array([f['frame'] for f in track])
-        bboxes   = numpy.array([numpy.array(f['bbox']) for f in track])
-        frameI   = numpy.arange(frameNum[0], frameNum[-1] + 1)
+        frameNum = np.array([f['frame'] for f in track])
+        bboxes   = np.array([np.array(f['bbox']) for f in track])
+        frameI   = np.arange(frameNum[0], frameNum[-1] + 1)
         bboxesI  = []
         for ij in range(4):
             interpfn = interp1d(frameNum, bboxes[:,ij])
             bboxesI.append(interpfn(frameI))
-        bboxesI  = numpy.stack(bboxesI, axis=1)
+        bboxesI  = np.stack(bboxesI, axis=1)
         if max(
-                numpy.mean(bboxesI[:,2] - bboxesI[:,0]), 
-                numpy.mean(bboxesI[:,3] - bboxesI[:,1])
+                np.mean(bboxesI[:,2] - bboxesI[:,0]), 
+                np.mean(bboxesI[:,3] - bboxesI[:,1])
             ) > args.minFaceSize:
             tracks.append({'frame':frameI, 'bbox':bboxesI})
     return tracks
@@ -146,7 +150,7 @@ def crop_video(args, track, cropFile):
         bs  = dets['s'][fidx]   # Detection box size
         bsi = int(bs * (1 + 2 * cs))  # Pad videos by this amount 
         image = cv2.imread(flist[frame])
-        frame = numpy.pad(
+        frame = np.pad(
                 image, 
                 ((bsi, bsi), (bsi, bsi), (0, 0)),
                 'constant', 
@@ -175,12 +179,11 @@ def crop_video(args, track, cropFile):
 
 def evaluate_network(files, args):
     # GPU: active speaker detection by pretrained TalkNet
-    s = talkNet()
-    s.loadParameters(args.pretrainModel)
+    s = TalkNet()
+    s.load_state_dict(torch.load('talk_net.pt', map_location=device))
+    s.to(device).eval()
     sys.stderr.write("Model %s loaded from previous state! \r\n"%args.pretrainModel)
-    s.eval()
     allScores = []
-    # durationSet = {1,2,4,6} # To make the result more reliable
     durationSet = {1, 2, 3, 4, 5, 6} # Use this line can get more reliable result
     for file in tqdm.tqdm(files, total = len(files)):
         fileName = os.path.splitext(file.split('/')[-1])[0] # Load audio and video
@@ -197,8 +200,11 @@ def evaluate_network(files, args):
             face = face[224 // 4 : 224 * 3 // 4, 224 // 4 : 224 * 3 // 4]
             videoFeature.append(face)
         video.release()
-        videoFeature = numpy.array(videoFeature)
-        length = min((audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100, videoFeature.shape[0] / 25)
+        videoFeature = np.array(videoFeature)
+        length = min(
+                (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100,
+                videoFeature.shape[0] / 25
+            )
         audioFeature = audioFeature[:int(round(length * 100)), :]
         videoFeature = videoFeature[:int(round(length * 25)), :, :]
         allScore = [] # Evaluation use TalkNet
@@ -207,19 +213,24 @@ def evaluate_network(files, args):
             scores = []
             with torch.no_grad():
                 for i in range(batchSize):
-                    inputA = torch.FloatTensor(audioFeature[i * duration * 100:(i+1) * duration * 100,:]).unsqueeze(0).cuda()
-                    inputV = torch.FloatTensor(videoFeature[i * duration * 25: (i+1) * duration * 25,:,:]).unsqueeze(0).cuda()
+                    inputA = torch.FloatTensor(audioFeature[
+                            i * duration * 100 : (i + 1) * duration * 100, :
+                        ]).unsqueeze(0).to(device)
+                    inputV = torch.FloatTensor(videoFeature[
+                            i * duration *  25 : (i + 1) * duration *  25, :, :
+                        ]).unsqueeze(0).to(device)
                     
                     # forward
-                    embedA = s.model.forward_audio_frontend(inputA)
-                    embedV = s.model.forward_visual_frontend(inputV)    
-                    embedA, embedV = s.model.forward_cross_attention(embedA, embedV)
-                    out = s.model.forward_audio_visual_backend(embedA, embedV)
-                    score = s.lossAV.forward(out)
+                    score = s(inputA, inputV)
+                    # embedA = s.model.forward_audio_frontend(inputA)
+                    # embedV = s.model.forward_visual_frontend(inputV)    
+                    # embedA, embedV = s.model.forward_cross_attention(embedA, embedV)
+                    # out = s.model.forward_audio_visual_backend(embedA, embedV)
+                    # score = s.lossAV.forward(out)
                     
                     scores.extend(score)
             allScore.append(scores)
-        allScore = numpy.round((numpy.mean(numpy.array(allScore), axis = 0)), 1).astype(float)
+        allScore = np.round((np.mean(np.array(allScore), axis = 0)), 1).astype(float)
         allScores.append(allScore)    
     return allScores
 
@@ -227,12 +238,12 @@ def visualization(tracks, scores, args):
     # CPU: visulize the result for video format
     flist = glob.glob(os.path.join(args.pyframesPath, '*.jpg'))
     flist.sort()
-    faces = [[] for i in range(len(flist))]
+    faces = [[] for _ in range(len(flist))]
     for tidx, track in enumerate(tracks):
         score = scores[tidx]
         for fidx, frame in enumerate(track['track']['frame'].tolist()):
             s = score[max(fidx - 2, 0): min(fidx + 3, len(score) - 1)] # average smoothing
-            s = numpy.mean(s)
+            s = np.mean(s)
             faces[frame].append({'track':tidx, 'score':float(s),'s':track['proc_track']['s'][fidx], 'x':track['proc_track']['x'][fidx], 'y':track['proc_track']['y'][fidx]})
     firstImage = cv2.imread(flist[0])
     fw = firstImage.shape[1]
@@ -298,6 +309,7 @@ def main():
     args.videoFilePath = os.path.join(args.pyaviPath, 'video.avi')
     
     # Extract the whole video
+    print(args.videoPath)
     command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
         (args.videoPath, args.nDataLoaderThread, args.videoFilePath))
     subprocess.call(command, shell=True, stdout=None)
