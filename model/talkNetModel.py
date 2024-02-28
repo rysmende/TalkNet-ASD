@@ -291,9 +291,9 @@ class attentionLayer(nn.Module):
         # (Tensor, Optional[Tensor], Optional[Tensor]) -> Tensor
         src = src.transpose(0, 1) # B, T, C -> T, B, C
         tar = tar.transpose(0, 1) # B, T, C -> T, B, C
-        src2 = self.self_attn(
+        src2, _ = self.self_attn(
                 query=tar, key=src, value=src, 
-                key_padding_mask=None, need_weights=False, attn_mask=None
+                key_padding_mask=None, need_weights=False
             )
         src = src + self.dropout1(src2)
         src = self.norm1(src)

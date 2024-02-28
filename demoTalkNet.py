@@ -43,8 +43,9 @@ args.savePath = os.path.join(args.videoFolder, args.videoName)
 def get_biggest_bbox(bboxes):
     if len(bboxes) == 0:
         return []
-    
-    idx = bboxes[-1].argmax()
+    if len(bboxes) == 1:
+        return bboxes[0]
+    idx = bboxes[:, -1].argmax()
     return bboxes[idx]
     
 
@@ -61,7 +62,7 @@ def inference_video(args):
         bbox = get_biggest_bbox(bboxes)
         # make sure only to take one face
         dets.append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]}) # dets has the frames info, bbox info, conf info
-        sys.stderr.write('%s-%05d; %d dets\r' % (args.videoFilePath, fidx, len(dets[-1])))
+        sys.stderr.write('%s-%05d; %d dets\r' % (args.videoFilePath, fidx, 1))
     savePath = os.path.join(args.pyworkPath,'faces.pckl')
     with open(savePath, 'wb') as fil:
         pickle.dump(dets, fil)
@@ -79,27 +80,34 @@ def bb_intersection_over_union(boxA, boxB):
     iou = interArea / float(boxAArea + boxBArea - interArea)
     return iou
 
-def track_shot(args, frameFaces):
+def track_shot(args, frameFaces: list):
     # CPU: Face tracking
     IOU_THR = 0.5     # Minimum IOU between consecutive face detections
     tracks  = []
+    # print(frameFaces)
+    removed = 0
     while True:
         track = []
-        for face in frameFaces:
-            # can be rewritten                    
+        # print('while')
+        for face in frameFaces[:]:
+            # can be rewritten   
             if track == []:
                 track.append(face)
                 frameFaces.remove(face)
+                removed += 1
             elif face['frame'] - track[-1]['frame'] <= args.numFailedDet:
                 iou = bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
                 if iou > IOU_THR:
                     track.append(face)
                     frameFaces.remove(face)
-            else:
-                break
-        # don't save if tracking consists of less than 11 consecutive frames
-        if len(track) <= args.minTrack:
+                    removed += 1
+        # if no tracks, then break
+        print(removed)
+        if len(track) == 0:
             break
+        # if length of tracks less than 11, continue loop
+        if len(track) <= args.minTrack:
+            continue
         frameNum = numpy.array([f['frame'] for f in track])
         bboxes   = numpy.array([numpy.array(f['bbox']) for f in track])
         frameI   = numpy.arange(frameNum[0], frameNum[-1] + 1)
@@ -112,7 +120,7 @@ def track_shot(args, frameFaces):
                 numpy.mean(bboxesI[:,2] - bboxesI[:,0]), 
                 numpy.mean(bboxesI[:,3] - bboxesI[:,1])
             ) > args.minFaceSize:
-            tracks.append({'frame':frameI,'bbox':bboxesI})
+            tracks.append({'frame':frameI, 'bbox':bboxesI})
     return tracks
 
 def crop_video(args, track, cropFile):
