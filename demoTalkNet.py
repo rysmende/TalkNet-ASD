@@ -311,39 +311,49 @@ def main():
     command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -async 1 -r 25 %s -loglevel panic" % \
         (args.videoPath, args.nDataLoaderThread, args.videoFilePath))
     subprocess.call(command, shell=True, stdout=None)
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the video and save in %s \r\n" %(args.videoFilePath))
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Extract the video and save in %s \r\n" %(args.videoFilePath))
     
     # Extract audio
     args.audioFilePath = os.path.join(args.pyaviPath, 'audio.wav')
     command = ("ffmpeg -y -i %s -qscale:a 0 -ac 1 -vn -threads %d -ar 16000 %s -loglevel panic" % \
         (args.videoFilePath, args.nDataLoaderThread, args.audioFilePath))
     subprocess.call(command, shell=True, stdout=None)
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the audio and save in %s \r\n" %(args.audioFilePath))
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Extract the audio and save in %s \r\n" %(args.audioFilePath))
 
     # Extract the video frames
     command = ("ffmpeg -y -i %s -qscale:v 2 -threads %d -f image2 %s -loglevel panic" % \
         (args.videoFilePath, args.nDataLoaderThread, os.path.join(args.pyframesPath, '%06d.jpg'))) 
     subprocess.call(command, shell=True, stdout=None)
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Extract the frames and save in %s \r\n" %(args.pyframesPath))
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Extract the frames and save in %s \r\n" %(args.pyframesPath))
 
     # Face detection for the video frames
     faces = inference_video(args)
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Face detection and save in %s \r\n" %(args.pyworkPath))
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Face detection and save in %s \r\n" %(args.pyworkPath))
 
     # Face tracking
     allTracks, vidTracks = [], []
     allTracks.extend(track_shot(args, faces)) # 'frames' to present this tracks' timestep, 'bbox' presents the location of the faces
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Face track and detected %d tracks \r\n" %len(allTracks))
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Face track and detected %d tracks \r\n" %len(allTracks))
 
     # Face clips cropping
     for ii, track in tqdm.tqdm(enumerate(allTracks), total = len(allTracks)):
         vidTracks.append(crop_video(args, track, os.path.join(args.pycropPath, '%05d'%ii)))
+    
+    # -----------------------------------------------------
+    # This part only for visualization
     savePath = os.path.join(args.pyworkPath, 'tracks.pckl')
     with open(savePath, 'wb') as fil:
         pickle.dump(vidTracks, fil)
-    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + " Face Crop and saved in %s tracks \r\n" %args.pycropPath)
+    sys.stderr.write(time.strftime("%Y-%m-%d %H:%M:%S") + \
+                     " Face Crop and saved in %s tracks \r\n" %args.pycropPath)
     fil = open(savePath, 'rb')
     vidTracks = pickle.load(fil)
+    # -----------------------------------------------------
 
     # Active Speaker Detection by TalkNet
     files = glob.glob("%s/*.avi"%args.pycropPath)
