@@ -1,5 +1,5 @@
 import sys, time, os, tqdm, torch, argparse, glob, subprocess, warnings, cv2, \
-    pickle, pdb, math, python_speech_features
+    pickle, math, python_speech_features
 
 from scipy import signal
 from scipy.io import wavfile
@@ -9,12 +9,11 @@ from shutil import rmtree # can delete
 import numpy as np
 
 from model.faceDetector.s3fd import S3FD
-from talkNet import talkNet
 from talk_net import TalkNet
 
 warnings.filterwarnings("ignore")
 
-LINK = '1AbN9fCf9IexMxEKXLQY2KYBlb-IhSEea'
+# LINK = '1AbN9fCf9IexMxEKXLQY2KYBlb-IhSEea'
 
 parser = argparse.ArgumentParser(description = "TalkNet Demo or Columnbia ASD Evaluation")
 
