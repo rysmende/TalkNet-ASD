@@ -5,11 +5,15 @@
 torchserve --start --ncs --model-store model_store --models s3fd.mar
 
 
+# To send request to WORKFLOW
+curl http://127.0.0.1:8080/predictions/sf3d -F "data=@./demo/000001.jpg"
+
 # DOCKER
 # To run on docker
 docker run --rm -it -p 127.0.0.1:8080:8080 -p 127.0.0.1:8081:8081 \
     -p 127.0.0.1:8082:8082 -v $(pwd)/model_store:/home/model-server/model-store \
     pytorch/torchserve:latest-cpu
+
 # To register model
 curl -X POST \
     "localhost:8081/models?model_name=s3fd&url=s3fd.mar&initial_workers=1"
@@ -17,11 +21,10 @@ curl -X POST \
 # WORKFLOW
 
 # To run WORKFLOW on torchserve
-torchserve --start --ncs --model-store model_store --workflow-store wf_store
+torchserve --start --model-store model_store --workflow-store wf_store
 
 # To register WORKFLOW
 curl -X POST "http://127.0.0.1:8081/workflows?url=asd_wf.war"
-
 
 # To send request to WORKFLOW
 curl http://127.0.0.1:8080/wfpredict/asd_wf -F "data=@./demo/000001.jpg"
