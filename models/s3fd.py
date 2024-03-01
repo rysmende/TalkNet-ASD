@@ -8,7 +8,7 @@ from s3fd_modules import L2Norm, Detect, PriorBox
 
 class S3FDNet(nn.Module):
 
-    def __init__(self, device='cuda'):
+    def __init__(self, device='cpu'):
         super(S3FDNet, self).__init__()
         self.device = device
 

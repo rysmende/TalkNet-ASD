@@ -42,7 +42,7 @@ import numpy as np
 
 #     return bboxes
 
-def nms(dets, thresh):
+def nms_(dets, thresh):
     """
     Courtesy of Ross Girshick
     [https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/nms/py_cpu_nms.py]

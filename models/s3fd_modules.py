@@ -11,7 +11,7 @@ class L2Norm(nn.Module):
         self.gamma = scale or None
         self.eps = 1e-10
         self.weight = nn.Parameter(torch.Tensor(self.n_channels))
-        self.reset_parameters()
+        # self.reset_parameters()
 
     # def reset_parameters(self):
     #     init.constant_(self.weight, self.gamma)

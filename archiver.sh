@@ -8,5 +8,5 @@ torch-model-archiver -f --model-name s3fd --version 1.0 \
 #     --handler handlers/lightcnn_handler.py --export-path model_store \
 #     --extra-files handlers/lightcnn_utils.py,models/lightcnn_modules.py
 
-torch-workflow-archiver -f --workflow-name fc_wf --spec-file workflow.yaml \
-    --handler handlers/wf_handler.py --export-path workflow_store/
+# torch-workflow-archiver -f --workflow-name fc_wf --spec-file workflow.yaml \
+#     --handler handlers/wf_handler.py --export-path workflow_store/
