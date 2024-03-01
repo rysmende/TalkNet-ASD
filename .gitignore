@@ -1,9 +1,9 @@
 # Other files
 *.wav
 *.mp4
-demo/*
+demo/
 model_store/
-workflow_store/
+wf_store/
 logs/
 
 # Byte-compiled / optimized / DLL files

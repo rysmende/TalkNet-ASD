@@ -30,32 +30,32 @@ class S3FDHandler(BaseHandler):
         sizes = []
         for row in data:
             input_datas = row.get('data') or row.get('body')
-            # input_datas = json.loads(input_datas)
+            input_datas = json.loads(input_datas)
             # print(input_datas)
-            # for i in ['image']:
-            full_image = ImageOps.exif_transpose(Image.open(io.BytesIO(
-                    # base64.b64decode(
-                            input_datas
-                            # )
-                        )
-                ))
-            w, h = full_image.size
-            new_w, new_h = int(w * SCALE), int(h * SCALE)
-            scaled_img = full_image.resize(
-                    (new_w, new_h), 
-                    resample=Image.Resampling.BILINEAR
-                )
-            # full_image = np.array(full_image)
+            for i in ['image']:
+                full_image = ImageOps.exif_transpose(Image.open(io.BytesIO(
+                        base64.b64decode(
+                                input_datas[i]
+                                )
+                            )
+                    ))
+                w, h = full_image.size
+                new_w, new_h = int(w * SCALE), int(h * SCALE)
+                scaled_img = full_image.resize(
+                        (new_w, new_h), 
+                        resample=Image.Resampling.BILINEAR
+                    )
+                # full_image = np.array(full_image)
 
-            scaled_img = np.swapaxes(scaled_img, 1, 2)
-            scaled_img = np.swapaxes(scaled_img, 1, 0)
-            scaled_img = scaled_img[[2, 1, 0], :, :]
-            scaled_img = scaled_img.astype('float32')
-            scaled_img -= img_mean
-            scaled_img = scaled_img[[2, 1, 0], :, :]
-            
-            imgs.append(torch.from_numpy(scaled_img))
-            sizes.append((w, h))
+                scaled_img = np.swapaxes(scaled_img, 1, 2)
+                scaled_img = np.swapaxes(scaled_img, 1, 0)
+                scaled_img = scaled_img[[2, 1, 0], :, :]
+                scaled_img = scaled_img.astype('float32')
+                scaled_img -= img_mean
+                scaled_img = scaled_img[[2, 1, 0], :, :]
+                
+                imgs.append(torch.from_numpy(scaled_img))
+                sizes.append((w, h))
         return imgs, sizes
 
     def inference(self, X):

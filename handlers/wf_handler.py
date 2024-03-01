@@ -8,7 +8,7 @@ def pre_processing(data, context):
         return data
     b64_data = []
     for row in data:
-        data = row.get('image')
+        data = row.get('data')
         # selfie_data = row.get('selfie_class')
         # Base64 encode the image to avoid the framework throwing
         # non json encodable errors
