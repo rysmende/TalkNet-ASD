@@ -8,10 +8,9 @@ models:
 
     s3fd:
       url: s3fd.mar
-    # lightcnn:
-    #   url: lightcnn.mar
-
+    talk:
+      url: talk.mar
+    
 dag:
   pre_processing: [s3fd]
-  #, lightcnn]
-  # mtcnn: [lightcnn]
+  s3fd: [talk]

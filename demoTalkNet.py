@@ -8,7 +8,7 @@ from shutil import rmtree # can delete
 
 import numpy as np
 
-from model.faceDetector.s3fd import S3FD
+from models.s3fd import S3FDNet as S3FD
 from talk_net import TalkNet
 
 warnings.filterwarnings("ignore")
@@ -55,13 +55,14 @@ def get_biggest_bbox(bboxes):
 def inference_video(args):
     # GPU: Face detection, output is the list contains the face location and score in this frame
     DET = S3FD(device=device)
+    DET.load_state_dict('model_weights/s3fd.pth')
     flist = glob.glob(os.path.join(args.pyframesPath, '*.jpg'))
     flist.sort()
     dets = []
     for fidx, fname in enumerate(flist):
         image = cv2.imread(fname)
         imagenp = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        bboxes = DET.detect_faces(imagenp, conf_th=0.9, scales=[args.facedetScale])
+        bboxes = DET(imagenp, conf_th=0.9, scales=[args.facedetScale])
         bbox = get_biggest_bbox(bboxes)
         # make sure only to take one face
         dets.append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]}) # dets has the frames info, bbox info, conf info

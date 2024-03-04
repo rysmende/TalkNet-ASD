@@ -12,7 +12,7 @@ from ts.torch_handler.base_handler import BaseHandler
 
 # from mtcnn_utils import postprocess_face
 from s3fd_utils import nms_
-from fd_utils import track_shot
+from fd_utils import track_shot, crop_video
 
 SCALE = 0.25
 THRESHOLD = 0.9
@@ -35,11 +35,12 @@ class S3FDHandler(BaseHandler):
             input_datas = row.get('data') or row.get('body')
         input_datas = json.loads(input_datas)
         video_path = input_datas['video_path']
+        audio_path = input_datas['audio_path']
         
         vidcap = cv2.VideoCapture(video_path)
-        success, image = vidcap.read()
+        ret, image = vidcap.read()
         n = 1
-        while success:
+        while ret:
             h, w, _ = image.shape
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             scaled_img = cv2.resize(
@@ -57,12 +58,15 @@ class S3FDHandler(BaseHandler):
             imgs.append(torch.from_numpy(scaled_img))
             sizes.append((w, h))
 
-            if n == 50:
+            # Restraint. Can be deleted
+            if n == 25:
                 break
-            success, image = vidcap.read()
-            n += 1
 
-        return [imgs], [sizes]
+            ret, image = vidcap.read()
+            n += 1
+        vidcap.release()
+
+        return [imgs], [sizes], video_path, audio_path
 
     def inference(self, X):
         """
@@ -81,7 +85,7 @@ class S3FDHandler(BaseHandler):
                 Y.append(y)
         return [Y]
 
-    def postprocess(self, Y, sizes):
+    def postprocess(self, Y, sizes, v_path, a_path):
         """
         Return inference result.
         :param inference_output: list of inference output
@@ -113,9 +117,10 @@ class S3FDHandler(BaseHandler):
             bbox = bboxes[0]
             
             res_bboxes.append({'frame': frame_n, 'bbox': bbox[:-1]})
-            print('!!!!!!!!!!!!!!!!!!!!res_bboxes: ', res_bboxes)
-        tracks = track_shot(res_bboxes)
-        return [tracks.tolist()]
+        # print('!!!!!!!!!!!!!!!!!!!!res_bboxes: ', res_bboxes)
+        track = track_shot(res_bboxes)
+        res = crop_video(track, v_path, a_path)
+        return [res]
 
     def handle(self, data, context):
         """
@@ -125,6 +130,6 @@ class S3FDHandler(BaseHandler):
         :param context: Initial context contains model server system properties.
         :return: prediction output
         """
-        X, sizes = self.preprocess(data)
+        X, sizes, v_path, a_path = self.preprocess(data)
         Y = self.inference(X)
-        return self.postprocess(Y, sizes)
+        return self.postprocess(Y, sizes, v_path, a_path)
