@@ -7,7 +7,7 @@ if [[ "$1" = "serve" ]]; then
         --model-store /home/model-server/model-store/ \
         --workflow-store /home/model-server/workflow-store/
     sleep 5
-    curl -X POST "http://0.0.0.0:8081/workflows?url=fc_wf.war"
+    curl -X POST "http://0.0.0.0:8081/workflows?url=asd_wf.war"
 else
     eval "$@"
 fi

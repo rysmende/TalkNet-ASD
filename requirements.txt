@@ -11,4 +11,4 @@ torchvision
 ffmpeg
 gdown
 youtube-dl
-Pillow=9.0.0
+Pillow==9.0.0

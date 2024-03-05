@@ -63,7 +63,7 @@ COPY config.properties /home/model-server/config.properties
 RUN mkdir /home/model-server/model-store && mkdir /home/model-server/workflow-store
 # Copy all required models and pipelines inside docker 
 COPY model_store /home/model-server/model-store
-COPY workflow_store /home/model-server/workflow-store
+COPY wf_store /home/model-server/workflow-store
 
 # Giving rights for execute for entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
@@ -74,6 +74,16 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
 # GIVING rights to execute 
 RUN chown -R model-server /home/model-server/model-store
 RUN chown -R model-server /home/model-server/workflow-store
+
+# Install extra packages
+RUN pip install torchserve torch-model-archiver torch-workflow-archiver
+RUN pip install pyyaml
+
+# RUN apt-get install software-properties-common
+# RUN add-apt-repository ppa:mc3man/trusty-media
+RUN apt-get -y update
+RUN apt-get -y upgrade
+RUN apt-get install -y ffmpeg
 
 EXPOSE 8080 8081 8082
 
