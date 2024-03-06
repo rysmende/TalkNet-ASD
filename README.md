@@ -5,7 +5,10 @@ This service provides the inference for Active Speaker Detection.
 ```
 git clone https://github.com/rysmende/TalkNet-ASD.git
 cd TalkNet-ASD
-git branch ts
+git checkout ts
+git pull origin ts
+mkdir model_store
+mkdir wf_store
 chmod +x archiver.sh
 ./archiver.sh
 docker build -t talk ./
