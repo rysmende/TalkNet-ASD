@@ -68,8 +68,8 @@ COPY wf_store /home/model-server/workflow-store
 # Giving rights for execute for entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
     && mkdir -p /home/model-server/tmp \
-    && chown -R model-server /home/model-server \
-    && chown -R model-server /home/venv
+    && chown -R model-server /home/model-server
+#    && chown -R model-server /home/venv
 
 # GIVING rights to execute 
 RUN chown -R model-server /home/model-server/model-store
