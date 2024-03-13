@@ -1,10 +1,12 @@
 # Other files
 *.wav
 *.mp4
+*.json
 demo/
 model_store/
 wf_store/
 logs/
+model_weights/mono.pth
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
