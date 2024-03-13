@@ -32,27 +32,31 @@ class MONOHandler(BaseHandler):
         if data is None:
             return data
 
-        for row in data:
-            data = row.get('data') or row.get('body')
-        data = json.loads(data)
-
-        # Download file
-        token = data['token']
-        bucket_name = data['bucket_name']
-        object_name = data['object_name']
-
         if os.path.isfile(VIDEO_TEMP):
             os.remove(VIDEO_TEMP)
 
-        os.system(
-            f'curl -X GET ' +
-            f'-H "Authorization: Bearer {token}" -o {VIDEO_TEMP} '
-            f'"https://storage.googleapis.com/storage/v1/b/{bucket_name}/o/{object_name}?alt=media"'
-        )
+        for row in data:
+            data = row.get('data') or row.get('body')
 
-        # with open(VIDEO_TEMP, 'wb') as out_file:
-        #     out_file.write(data)
-        
+        is_dict = False
+        try:
+            data = json.loads(data)
+            is_dict = True
+        except:
+            with open(VIDEO_TEMP, 'wb') as out_file:
+                out_file.write(data)
+
+        if is_dict:
+            # Download file
+            token = data['token']
+            bucket_name = data['bucket_name']
+            object_name = data['object_name']
+            os.system(
+                f'curl -X GET ' +
+                f'-H "Authorization: Bearer {token}" -o {VIDEO_TEMP} '
+                f'"https://storage.googleapis.com/storage/v1/b/{bucket_name}/o/{object_name}?alt=media"'
+            )
+
         command = f'ffmpeg -y -i {VIDEO_TEMP} -qscale:v 2 -threads 10 ' +\
             f'-async 1 -r 25 {VIDEO_OUTPUT} -loglevel panic'
         subprocess.call(command, shell=True, stdout=None)
