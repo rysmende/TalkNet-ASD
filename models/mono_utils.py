@@ -5,18 +5,52 @@ import os
 import cv2
 import subprocess
 from scipy.interpolate import interp1d
+import torch
+import python_speech_features
 
-# Minimum IOU between consecutive face detections
+
 IOU_THRESHOLD = 0.5
 MIN_TRACK = 10
 MIN_FAILED_DET = 10
 MIN_FACE_SIZE = 1
+THRESHOLD = 0.9
 CROP_SCALE = 0.4
-# TEMP_NAME = 'temp'
+
+def postprocess_det(Y, sizes, v_path, a_path):
+    res_bboxes = []
+    for frame_n, (y, (w, h)) in enumerate(zip(Y, sizes)):
+        detections = y.data
+        bboxes = np.empty(shape=(0, 5))
+
+        scale = torch.Tensor([w, h, w, h])
+
+        for i in range(detections.size(1)):
+            j = 0
+            while detections[0, i, j, 0] > THRESHOLD:
+                score = detections[0, i, j, 0]
+                pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
+                bbox = (pt[0], pt[1], pt[2], pt[3], score)
+                bboxes = np.vstack((bboxes, bbox))
+                j += 1
+        
+        keep = nms_(bboxes, 0.1)
+        bboxes = bboxes[keep]
+        
+        # TODO something with multiple or zero faces
+        # if len(bboxes) == 0:
+        #   continue
+        bbox = bboxes[0]
+        
+        res_bboxes.append({'frame': frame_n, 'bbox': bbox[:-1]})
+    track = track_shot(res_bboxes)
+    # if len(track) == 0:
+    #     return []
+    res = crop_video(track, v_path, a_path)
+    return res
+    
 
 def track_shot(frameFaces: list):
         # CPU: Face tracking
-        # tracks  = []
         while True:
             track = []
             for face in frameFaces[:]:
@@ -50,7 +84,7 @@ def track_shot(frameFaces: list):
                 ) > MIN_FACE_SIZE:
                 # only first track, can be modified
                 return {'frame': frameI, 'bbox': bboxesI}
-        # return tracks
+        return []
 
 
 def __bb_intersection_over_union(boxA, boxB):
@@ -133,6 +167,67 @@ def crop_video(track, video_path, audio_path):
     video_path = os.path.join(os.getcwd(), video_out)
     audio_path = os.path.join(os.getcwd(), audio_out)
     return {
-            # 'track': track, 'proc_track': dets, 
             'video_path': video_path, 'audio_path': audio_path
         }
+
+def preprocess_talk(input_datas):
+    # Take the input data and make it inference ready
+    video_path = input_datas['video_path']
+    audio_path = input_datas['audio_path']
+    
+    _, audio = wavfile.read(audio_path)
+    audioFeature = python_speech_features.mfcc(audio, 16000, numcep = 13, winlen = 0.025, winstep = 0.010)
+    
+    videoFeature = []
+    vidcap = cv2.VideoCapture(video_path)
+    while vidcap.isOpened():
+        ret, frames = vidcap.read()
+        if not ret:
+            break
+        face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
+        face = cv2.resize(face, (224, 224))
+        face = face[224 // 4 : 224 * 3 // 4, 224 // 4 : 224 * 3 // 4]
+        videoFeature.append(face)
+    vidcap.release()
+    videoFeature = np.array(videoFeature)
+    length = min(
+            (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100,
+            videoFeature.shape[0] / 25
+        )
+    audioFeature = audioFeature[:int(round(length * 100)), :]
+    videoFeature = videoFeature[:int(round(length * 25)), :, :]
+    return audioFeature, videoFeature, length
+
+
+def nms_(dets, thresh):
+    """
+    Courtesy of Ross Girshick
+    [https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/nms/py_cpu_nms.py]
+    """
+    x1 = dets[:, 0]
+    y1 = dets[:, 1]
+    x2 = dets[:, 2]
+    y2 = dets[:, 3]
+    scores = dets[:, 4]
+
+    areas = (x2 - x1) * (y2 - y1)
+    order = scores.argsort()[::-1]
+
+    keep = []
+    while order.size > 0:
+        i = order[0]
+        keep.append(int(i))
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+
+        w = np.maximum(0.0, xx2 - xx1)
+        h = np.maximum(0.0, yy2 - yy1)
+        inter = w * h
+        ovr = inter / (areas[i] + areas[order[1:]] - inter)
+
+        inds = np.where(ovr <= thresh)[0]
+        order = order[inds + 1]
+
+    return np.array(keep).astype(int)

@@ -4,11 +4,7 @@ numpy
 scipy
 scikit-learn
 tqdm
-scenedetect
 opencv-python
 python_speech_features
 torchvision
-ffmpeg
-gdown
-youtube-dl
 Pillow==9.0.0
