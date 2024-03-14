@@ -4,7 +4,7 @@ This service provides the inference for Active Speaker Detection.
 
 ## Clone repository
 ```
-git clone https://github.com/rysmende/TalkNet-ASD.git
+git clone https://github.com/Namadgi/TalkNet-ASD.git
 cd TalkNet-ASD
 git checkout ts2
 git pull origin ts2
