@@ -21,6 +21,9 @@ class Mono(nn.Module):
             Y.append(y)
         
         det_res = postprocess_det(Y, sizes, v_path, a_path)
+        if isinstance(det_res, list):
+            return []
+        
         audio_X, video_X, length = preprocess_talk(det_res)
         duration_set = set(range(1, 7))
         all_scores = []

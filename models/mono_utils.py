@@ -37,14 +37,14 @@ def postprocess_det(Y, sizes, v_path, a_path):
         bboxes = bboxes[keep]
         
         # TODO something with multiple or zero faces
-        # if len(bboxes) == 0:
-        #   continue
+        if len(bboxes) == 0:
+          continue
         bbox = bboxes[0]
         
         res_bboxes.append({'frame': frame_n, 'bbox': bbox[:-1]})
     track = track_shot(res_bboxes)
-    # if len(track) == 0:
-    #     return []
+    if isinstance(track, list):
+        return []
     res = crop_video(track, v_path, a_path)
     return res
     
@@ -118,8 +118,8 @@ def crop_video(track, video_path, audio_path):
     ret, frame = vidcap.read()
     while ret:
         frames.append(frame)
-        if counter == 25:
-            break
+        # if counter == 25:
+        #     break
         ret, frame = vidcap.read()
         counter += 1
     vidcap.release()

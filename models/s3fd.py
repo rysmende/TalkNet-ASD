@@ -9,7 +9,7 @@ from s3fd_utils import nms, decode
 
 class S3FDNet(nn.Module):
 
-    def __init__(self, device='cpu'):
+    def __init__(self, device='cuda'):
         super(S3FDNet, self).__init__()
         self.device = device
 

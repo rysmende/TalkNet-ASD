@@ -59,19 +59,6 @@ RUN useradd -m model-server
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY config.properties /home/model-server/config.properties
 
-# Create two folder for models and workflow 
-RUN mkdir /home/model-server/model-store && mkdir /home/model-server/workflow-store
-# Copy all required models and pipelines inside docker 
-COPY model_store /home/model-server/model-store
-
-# Giving rights for execute for entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && mkdir -p /home/model-server/tmp \
-    && chown -R model-server /home/model-server
-
-# GIVING rights to execute 
-RUN chown -R model-server /home/model-server/model-store
-
 # Install extra packages
 RUN pip install torchserve torch-model-archiver
 RUN pip install pyyaml
@@ -80,10 +67,37 @@ RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
+# Create two folder for models 
+RUN mkdir /home/model-server/model-store
+# Copy all required models and pipelines inside docker 
+COPY model_store /home/model-server/model-store
+
+# Giving rights for execute for entrypoint
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && mkdir -p /home/model-server/tmp \
+    && chown -R model-server /home/model-server
+
+# RUN mkdir -p /home/model-server/tmp \
+#     && chown -R model-server /home/model-server
+
+
+# GIVING rights to execute 
+RUN chown -R model-server /home/model-server/model-store
+
 EXPOSE 8080 8081 8082
 
 USER model-server
 WORKDIR /home/model-server
 ENV TEMP=/home/model-server/tmp
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["serve", "curl"]  
+CMD ["serve", "curl"]
+
+# # run Torchserve HTTP serve to respond to prediction requests
+# ENTRYPOINT ["torchserve", \
+#      "--start", \
+#      "--ncs", \
+#     #  "--ts-config=/home/model-server/config.properties", \
+#      "--models", \
+#      "mono.mar", \
+#      "--model-store", \
+#      "/home/model-server/model-store"]

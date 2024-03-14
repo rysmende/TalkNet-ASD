@@ -1,11 +1,11 @@
-import io
+# import io
 import json
-import base64
+# import base64
 import cv2
 
 import os
 import numpy as np
-from PIL import Image, ImageOps
+# from PIL import Image, ImageOps
 import subprocess
 
 import torch
@@ -38,13 +38,16 @@ class MONOHandler(BaseHandler):
         for row in data:
             data = row.get('data') or row.get('body')
 
-        is_dict = False
-        try:
-            data = json.loads(data)
-            is_dict = True
-        except:
-            with open(VIDEO_TEMP, 'wb') as out_file:
-                out_file.write(data)
+        is_dict = True
+        if isinstance(data, dict):
+            data = data['instances'][0]
+        else:
+            try:
+                data = json.loads(data)
+            except:
+                is_dict = False
+                with open(VIDEO_TEMP, 'wb') as out_file:
+                    out_file.write(data)
 
         if is_dict:
             # Download file
@@ -100,8 +103,8 @@ class MONOHandler(BaseHandler):
             sizes.append((w, h))
 
             # Restraint. Can be deleted
-            if n == 25:
-                break
+            # if n == 25:
+            #     break
 
             ret, image = vidcap.read()
             n += 1
@@ -139,10 +142,22 @@ class MONOHandler(BaseHandler):
         """
         X, sizes, v_path, a_path = self.preprocess(data)
         Y = self.inference(X, sizes, v_path, a_path)
+        if len(Y) == 0:
+            return form_response(1)
         res = self.postprocess(Y)
-        return form_response(res)
+        return form_response(0, res)
     
-def form_response(res):
+def form_response(code, res = None):
     # Figure it out
-    return [res.tolist()]
+    if code == 1:
+        return [{
+            'code': code,
+            'description': 'No face present',
+            'result': 0.00,
+        }]
+    return [{
+            'code': code,
+            'description': 'Successful check',
+            'result': round((res > 0).mean() * 100, 2)        
+        }]
 
