@@ -28,7 +28,7 @@ mkdir model_store
 chmod +x archiver.sh
 ./archiver.sh
 docker build -t talk ./
-docker run --rm -p 8080:8080 talk serve
+docker run --rm --gpus all -p 8080:8080 talk serve
 ```
 
 ## Send inference
@@ -38,15 +38,9 @@ curl http://0.0.0.0:8080/predictions/mono -F "data=@./demo/file.avi"
 
 ## Result
 ```
-[
-  [
-    -1.0
-    -0.5
-     0.0
-     0.3
-     0.8
-     1.0
-     ...
-  ]
-]
+{
+  "code": 0,
+  "description": "Successful check",
+  "result": 33.2
+}
 ```
