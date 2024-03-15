@@ -150,14 +150,14 @@ class MONOHandler(BaseHandler):
 def form_response(code, res = None):
     # Figure it out
     if code == 1:
-        return [{
+        return [str({
             'code': code,
-            'description': 'No face present',
+            # 'description': 'No face present',
             'result': 0.00,
-        }]
-    return [{
+        })]
+    return [str({
             'code': code,
-            'description': 'Successful check',
+            # 'description': 'Successful check',
             'result': round((res > 0).mean() * 100, 2)        
-        }]
+        })]
 

@@ -23,13 +23,13 @@ from google.cloud import aiplatform
 
 #     # the name of the experiment to use to track
 #     # logged metrics and parameters
-#     experiment='my-experiment',
+#     # experiment='my-experiment',
 
 #     # description of the experiment above
-#     experiment_description='my experiment description'
+#     # experiment_description='my experiment description'
 # )
 
-VERSION = 1
+VERSION = 3
 APP_NAME = 'asd'
 CUSTOM_PREDICTOR_IMAGE_URI = 'us-central1-docker.pkg.dev/biometry-416410/biometry-docker-repo/asd:tag1'
 
@@ -40,18 +40,18 @@ health_route = "/ping"
 predict_route = f"/predictions/{MODEL_NAME}"
 serving_container_ports = [8080]
 
-# model = aiplatform.Model.upload(
-#     display_name=model_display_name,
-#     description=model_description,
-#     serving_container_image_uri=CUSTOM_PREDICTOR_IMAGE_URI,
-#     serving_container_predict_route=predict_route,
-#     serving_container_health_route=health_route,
-#     serving_container_ports=serving_container_ports,
-# )
-model = aiplatform.Model.list()[0]
+model = aiplatform.Model.upload(
+    display_name=model_display_name,
+    description=model_description,
+    serving_container_image_uri=CUSTOM_PREDICTOR_IMAGE_URI,
+    serving_container_predict_route=predict_route,
+    serving_container_health_route=health_route,
+    serving_container_ports=serving_container_ports,
+)
+# model = aiplatform.Model.list()[0]
 model.wait()
 
-endpoint = aiplatform.Endpoint.list()[0]
+# endpoint = aiplatform.Endpoint.list()[0]
 # print(model.display_name)
 # print(model.resource_name)
 
@@ -60,24 +60,24 @@ endpoint = aiplatform.Endpoint.list()[0]
 
 # aiplatform.Model.
 
-traffic_percentage = 100
-machine_type = "n1-standard-4"
-accelerator_type = 'NVIDIA_TESLA_T4'
-accelerator_count = 1
-deployed_model_display_name = model_display_name
-min_replica_count = 1
-max_replica_count = 1
-sync = True
+# traffic_percentage = 100
+# machine_type = "n1-standard-4"
+# accelerator_type = 'NVIDIA_TESLA_T4'
+# accelerator_count = 1
+# deployed_model_display_name = model_display_name
+# min_replica_count = 1
+# max_replica_count = 1
+# sync = True
 
-model.deploy(
-    endpoint=endpoint,
-    deployed_model_display_name=deployed_model_display_name,
-    traffic_percentage=traffic_percentage,
-    machine_type=machine_type,
-    sync=sync,
-    accelerator_type=accelerator_type,
-    accelerator_count=accelerator_count
+# model.deploy(
+#     endpoint=endpoint,
+#     deployed_model_display_name=deployed_model_display_name,
+#     traffic_percentage=traffic_percentage,
+#     machine_type=machine_type,
+#     sync=sync,
+#     accelerator_type=accelerator_type,
+#     accelerator_count=accelerator_count
 
-)
+# )
 
-model.wait()
+# model.wait()
