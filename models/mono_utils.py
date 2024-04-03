@@ -5,8 +5,8 @@ import os
 import cv2
 import subprocess
 from scipy.interpolate import interp1d
-import torch
 import python_speech_features
+import time
 
 
 IOU_THRESHOLD = 0.5
@@ -16,75 +16,59 @@ MIN_FACE_SIZE = 1
 THRESHOLD = 0.9
 CROP_SCALE = 0.4
 
-def postprocess_det(Y, sizes, v_path, a_path):
+def postprocess_det(Y, v_path, a_path):
     res_bboxes = []
-    for frame_n, (y, (w, h)) in enumerate(zip(Y, sizes)):
-        detections = y.data
-        bboxes = np.empty(shape=(0, 5))
-
-        scale = torch.Tensor([w, h, w, h])
-
-        for i in range(detections.size(1)):
-            j = 0
-            while detections[0, i, j, 0] > THRESHOLD:
-                score = detections[0, i, j, 0]
-                pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
-                bbox = (pt[0], pt[1], pt[2], pt[3], score)
-                bboxes = np.vstack((bboxes, bbox))
-                j += 1
-        
-        keep = nms_(bboxes, 0.1)
-        bboxes = bboxes[keep]
-        
+    for frame_n, bboxes in enumerate(Y):
         # TODO something with multiple or zero faces
         if len(bboxes) == 0:
           continue
         bbox = bboxes[0]
-        
-        res_bboxes.append({'frame': frame_n, 'bbox': bbox[:-1]})
+        res_bboxes.append({'frame': frame_n, 'bbox': bbox})
     track = track_shot(res_bboxes)
     if isinstance(track, list):
         return []
+    cur_time = time.time()    
     res = crop_video(track, v_path, a_path)
+    print('FC:', time.time() - cur_time)
     return res
     
 
 def track_shot(frameFaces: list):
-        # CPU: Face tracking
-        while True:
-            track = []
-            for face in frameFaces[:]:
-                if track == []:
+    # CPU: Face tracking
+    while True:
+        track = []
+        for face in frameFaces[:]:
+            if track == []:
+                track.append(face)
+                frameFaces.remove(face)
+            elif face['frame'] - track[-1]['frame'] <= MIN_FAILED_DET:
+                iou = __bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
+                if iou > IOU_THRESHOLD:
                     track.append(face)
                     frameFaces.remove(face)
-                elif face['frame'] - track[-1]['frame'] <= MIN_FAILED_DET:
-                    iou = __bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
-                    if iou > IOU_THRESHOLD:
-                        track.append(face)
-                        frameFaces.remove(face)
-            
-            # if no tracks, then break
-            if len(track) == 0:
-                break
-            # if length of tracks less than 11, continue loop
-            if len(track) <= MIN_TRACK:
-                continue
-            
-            frameNum = np.array([f['frame'] for f in track])
-            bboxes   = np.array([np.array(f['bbox']) for f in track])
-            frameI   = np.arange(frameNum[0], frameNum[-1] + 1)
-            bboxesI  = []
-            for ij in range(4):
-                interpfn = interp1d(frameNum, bboxes[:,ij])
-                bboxesI.append(interpfn(frameI))
-            bboxesI  = np.stack(bboxesI, axis=1)
-            if max(
-                    np.mean(bboxesI[:,2] - bboxesI[:,0]), 
-                    np.mean(bboxesI[:,3] - bboxesI[:,1])
-                ) > MIN_FACE_SIZE:
-                # only first track, can be modified
-                return {'frame': frameI, 'bbox': bboxesI}
-        return []
+        
+        # if no tracks, then break
+        if len(track) == 0:
+            break
+        # if length of tracks less than 11, continue loop
+        if len(track) <= MIN_TRACK:
+            continue
+        
+        frameNum = np.array([f['frame'] for f in track])
+        bboxes   = np.array([np.array(f['bbox']) for f in track])
+        frameI   = np.arange(frameNum[0], frameNum[-1] + 1)
+        bboxesI  = []
+        for ij in range(4):
+            interpfn = interp1d(frameNum, bboxes[:,ij])
+            bboxesI.append(interpfn(frameI))
+        bboxesI  = np.stack(bboxesI, axis=1)
+        if max(
+                np.mean(bboxesI[:,2] - bboxesI[:,0]), 
+                np.mean(bboxesI[:,3] - bboxesI[:,1])
+            ) > MIN_FACE_SIZE:
+            # only first track, can be modified
+            return {'frame': frameI, 'bbox': bboxesI}
+    return []
 
 
 def __bb_intersection_over_union(boxA, boxB):

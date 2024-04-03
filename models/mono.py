@@ -1,30 +1,49 @@
+import time
 import math
 import torch.nn as nn
 import torch
+# from torch.utils.data import DataLoader, TensorDataset
 
-from s3fd import S3FDNet
+# from s3fd import S3FDNet
 from talk import TalkNet
 
 from mono_utils import postprocess_det, preprocess_talk
+from ibug.face_detection import RetinaFacePredictor
 
 class Mono(nn.Module):
     def __init__(self) -> None:
         super().__init__()
+        device = 'cuda'
+        model_name = 'mobilenet0.25'
         self.talk = TalkNet()
-        self.s3fd = S3FDNet()
+        self.refd = RetinaFacePredictor(
+            device=device,
+            threshold=0.8,
+            model=RetinaFacePredictor.get_model(model_name),
+        )
+        # self.s3fd = S3FDNet()
 
-    def forward(self, X, sizes, v_path, a_path, device):
+    def forward(self, X, v_path, a_path, device):
+        cur_time = time.time()
+        step = 2
         Y = []
-        for x in X:
-            x = x.unsqueeze(0).to(device)
-            y = self.s3fd(x)
-            Y.append(y)
+        for i, x in enumerate(X):
+            if i != len(X) - 1 and i % step != 0:
+                Y.append([])
+                continue
+
+            bbox = self.refd(x, rgb=False)[:, :4]
+            Y.append(bbox)
+
+        print('FD:', time.time() - cur_time)
+        det_res = postprocess_det(Y, v_path, a_path)
         
-        det_res = postprocess_det(Y, sizes, v_path, a_path)
         if isinstance(det_res, list):
             return []
-        
+        cur_time = time.time()
         audio_X, video_X, length = preprocess_talk(det_res)
+        print('VE:', time.time() - cur_time)
+        cur_time = time.time()
         duration_set = set(range(1, 7))
         all_scores = []
         for d in duration_set:
@@ -41,5 +60,7 @@ class Mono(nn.Module):
                     score = self.talk(inputA, inputV)
                 scores.extend(score)
             all_scores.append(scores)
+        print('VI:', time.time() - cur_time)
+        
         return all_scores
         

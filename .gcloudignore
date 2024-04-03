@@ -1,3 +1,8 @@
 .git
 .gcloudignore
 .gitignore
+demo/
+model_weights/
+models/
+handlers/
+extra_files/

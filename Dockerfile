@@ -38,16 +38,17 @@ RUN if [ $CUDA==1 ]; then \
 # Extra libraries for opencv
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install --no-install-recommends -y  \
-      bzip2 \
-      g++ \
-      git \
-      graphviz \
-      libgl1-mesa-glx \
-      libhdf5-dev \
-      openmpi-bin \
-      wget \
-      python3-tk && \
-      rm -rf /var/lib/apt/lists/*
+    bzip2 \
+    g++ \
+    git \
+    git-lfs \
+    graphviz \
+    libgl1-mesa-glx \
+    libhdf5-dev \
+    openmpi-bin \
+    wget \
+    python3-tk && \
+    rm -rf /var/lib/apt/lists/*
 
 # Pip dependencies
 COPY requirements.txt /home/model-server/requirements.txt
@@ -55,9 +56,6 @@ RUN pip install --no-cache-dir -r /home/model-server/requirements.txt
 
 # Add user for execute the commands 
 RUN useradd -m model-server
-
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY config.properties /home/model-server/config.properties
 
 # Install extra packages
 RUN pip install torchserve torch-model-archiver
@@ -67,10 +65,20 @@ RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
+RUN mkdir /home/dependencies
+RUN cd /home/dependencies && \
+    git clone https://github.com/hhj1897/face_detection.git && \
+    cd /home/dependencies/face_detection && \
+    git lfs pull && \
+    pip install -e .
+
 # Create two folder for models 
 RUN mkdir /home/model-server/model-store
 # Copy all required models and pipelines inside docker 
 COPY model_store /home/model-server/model-store
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY config.properties /home/model-server/config.properties
 
 # Giving rights for execute for entrypoint
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \

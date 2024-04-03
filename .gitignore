@@ -8,7 +8,12 @@ model_store/
 wf_store/
 logs/
 model_weights/mono.pth
+model_weights/mono_s3fd.pth
 setup.txt
+*.ipynb
+send.py
+scripts.txt
+
 
 
 # Byte-compiled / optimized / DLL files
