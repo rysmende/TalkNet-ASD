@@ -21,7 +21,7 @@ def postprocess_det(Y, v_path, a_path):
     for frame_n, bboxes in enumerate(Y):
         # TODO something with multiple or zero faces
         if len(bboxes) == 0:
-          continue
+            continue
         bbox = bboxes[0]
         res_bboxes.append({'frame': frame_n, 'bbox': bbox})
     track = track_shot(res_bboxes)
@@ -35,6 +35,7 @@ def postprocess_det(Y, v_path, a_path):
 
 def track_shot(frameFaces: list):
     # CPU: Face tracking
+    print(frameFaces)
     while True:
         track = []
         for face in frameFaces[:]:

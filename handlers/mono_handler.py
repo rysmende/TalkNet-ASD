@@ -64,13 +64,13 @@ class MONOHandler(BaseHandler):
         cur_time = time.time()
         command = f'ffmpeg -y -i {VIDEO_TEMP} -qscale:v 2 -threads 10 ' +\
             f'-async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT} -loglevel panic'
-        subprocess.call(command, shell=True, stdout=None)
+        os.system(command)
         
-        os.remove(VIDEO_TEMP)
+        # os.remove(VIDEO_TEMP)
     
         command = f'ffmpeg -y -i {VIDEO_OUTPUT} -qscale:a 0 -ac 1 -vn ' +\
             f'-threads 10 -ar 16000 {AUDIO_OUTPUT} -loglevel panic'
-        subprocess.call(command, shell=True, stdout=None)
+        os.system(command)
         print('VP: ', time.time() - cur_time)
         # Base64 encode the image to avoid the framework throwing
         # non json encodable errors
@@ -114,21 +114,24 @@ class MONOHandler(BaseHandler):
         X, v_path, a_path = self.preprocess(data)
         Y = self.inference(X, v_path, a_path)
         if len(Y) == 0:
-            return form_response(1)
+            return form_response(code=2)
         res = self.postprocess(Y)
-        return form_response(0, res)
+        return form_response(result=res)
     
-def form_response(code, res = None):
+def form_response(code = None, result = 0.0):
     # Figure it out
-    if code == 1:
-        return [{
-            'code': code,
-            'description': 'No face present',
-            'result': 0.00,
-        }]
+    descriptions = [
+        'Successful check',
+        'Person is not speaking',
+        'No face present',
+    ]
+    if code != 2:
+        result = round((result > 0).mean() * 100, 2)
+        code = int(result < 4.0)
+
     return [{
         'code': code,
-        'description': 'Successful check',
-        'result': round((res > 0).mean() * 100, 2)        
+        'description': descriptions[code],
+        'result': result,
     }]
 

@@ -25,7 +25,7 @@ class Mono(nn.Module):
 
     def forward(self, X, v_path, a_path, device):
         cur_time = time.time()
-        step = 2
+        step = 1
         Y = []
         for i, x in enumerate(X):
             if i != len(X) - 1 and i % step != 0:
