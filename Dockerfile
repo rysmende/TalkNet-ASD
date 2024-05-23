@@ -72,6 +72,8 @@ RUN cd /home/dependencies && \
     git lfs pull && \
     pip install -e .
 
+RUN pip install setuptools==69.5.1
+
 # Create two folder for models 
 RUN mkdir /home/model-server/model-store
 # Copy all required models and pipelines inside docker 

@@ -17,9 +17,9 @@ from torchvision.io import read_video
 # from fd_utils import track_shot, crop_video
 
 SCALE = 0.25
-VIDEO_TEMP   = 'temp.avi'
-VIDEO_OUTPUT = 'output.avi'
-AUDIO_OUTPUT = 'output.wav'
+VIDEO_TEMP   = 'input.mp4'
+VIDEO_OUTPUT = 'output.mp4'
+AUDIO_OUTPUT = 'output.mp4'
 
 class MONOHandler(BaseHandler):
 
@@ -35,6 +35,12 @@ class MONOHandler(BaseHandler):
 
         if os.path.isfile(VIDEO_TEMP):
             os.remove(VIDEO_TEMP)
+        
+        if os.path.isfile(VIDEO_OUTPUT):
+            os.remove(VIDEO_OUTPUT)
+
+        if os.path.isfile(AUDIO_OUTPUT):
+            os.remove(AUDIO_OUTPUT)
 
         for row in data:
             data = row.get('data') or row.get('body')
@@ -55,19 +61,30 @@ class MONOHandler(BaseHandler):
             token = data['token']
             bucket_name = data['bucket_name']
             object_name = data['object_name']
+            object_encoded_name = object_name.replace('/', '%2F')
+            result_object_name = object_name.split('/')[-1]
+            print(data)
+
             os.system(
                 f'curl -X GET ' +
-                f'-H "Authorization: Bearer {token}" -o {VIDEO_TEMP} '
-                f'"https://storage.googleapis.com/storage/v1/b/{bucket_name}/o/{object_name}?alt=media"'
+                f'-H "Authorization: Bearer {token}" -o {result_object_name} '
+                f'"https://storage.googleapis.com/storage/v1/b/{bucket_name}/o/{object_encoded_name}?alt=media"'
             )
+        
+        new_res_object_name = VIDEO_TEMP
+
+        if result_object_name[-5:] == '.webm':
+            command = f'ffmpeg -y -fflags +genpts -i {result_object_name} ' +\
+                f'-max_muxing_queue_size 1024 -r 25 {new_res_object_name}'
+            os.system(command)
+        else:
+            new_res_object_name = result_object_name
 
         cur_time = time.time()
-        command = f'ffmpeg -y -i {VIDEO_TEMP} -qscale:v 2 -threads 10 ' +\
+        command = f'ffmpeg -y -i {new_res_object_name} -qscale:v 2 -threads 10 ' +\
             f'-async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT} -loglevel panic'
         os.system(command)
         
-        # os.remove(VIDEO_TEMP)
-    
         command = f'ffmpeg -y -i {VIDEO_OUTPUT} -qscale:a 0 -ac 1 -vn ' +\
             f'-threads 10 -ar 16000 {AUDIO_OUTPUT} -loglevel panic'
         os.system(command)
@@ -116,7 +133,9 @@ class MONOHandler(BaseHandler):
         if len(Y) == 0:
             return form_response(code=2)
         res = self.postprocess(Y)
-        return form_response(result=res)
+        response = form_response(result=res)
+        print(response)
+        return response
     
 def form_response(code = None, result = 0.0):
     # Figure it out

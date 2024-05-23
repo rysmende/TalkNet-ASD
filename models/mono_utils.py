@@ -16,7 +16,7 @@ MIN_FACE_SIZE = 1
 THRESHOLD = 0.9
 CROP_SCALE = 0.4
 
-def postprocess_det(Y, v_path, a_path):
+def postprocess_det(Y, v_path, a_path) -> dict:
     res_bboxes = []
     for frame_n, bboxes in enumerate(Y):
         # TODO something with multiple or zero faces
@@ -85,7 +85,7 @@ def __bb_intersection_over_union(boxA, boxB):
     return iou
 
 
-def crop_video(track, video_path, audio_path):
+def crop_video(track, video_path, audio_path) -> dict:
     # CPU: crop the face clips
 
     dets = {'x': [], 'y': [], 's': []}
@@ -103,12 +103,23 @@ def crop_video(track, video_path, audio_path):
     ret, frame = vidcap.read()
     while ret:
         frames.append(frame)
-        # if counter == 25:
-        #     break
         ret, frame = vidcap.read()
         counter += 1
     vidcap.release()
     
+    # command = 'mkdir frames &&' +\
+    #          f'ffmpeg -i {video_path} frames/%04d.bmp'
+    # os.system(command)
+
+    # files = sorted(os.listdir('frames'))
+    # frames = []
+    # for f in files:
+    #     frame = cv2.imread(f'frames/{f}')
+    #     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    #     frames.append(frame)
+    
+    # os.system('rm -r frames')
+
     vOut = cv2.VideoWriter(
             'temp.avi', 
             cv2.VideoWriter_fourcc(*'XVID'), 
@@ -148,7 +159,7 @@ def crop_video(track, video_path, audio_path):
               (audio_out, video_out)) # Combine audio and video file
     output = subprocess.call(command, shell=True, stdout=None)
     
-    os.remove('temp.avi')
+    # os.remove('temp.avi')
     video_path = os.path.join(os.getcwd(), video_out)
     audio_path = os.path.join(os.getcwd(), audio_out)
     return {
@@ -175,6 +186,7 @@ def preprocess_talk(input_datas):
         videoFeature.append(face)
     vidcap.release()
     videoFeature = np.array(videoFeature)
+    print(videoFeature.shape)
     length = min(
             (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100,
             videoFeature.shape[0] / 25
