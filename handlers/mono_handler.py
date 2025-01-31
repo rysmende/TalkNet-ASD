@@ -149,9 +149,15 @@ def form_response(code = None, result = 0.0):
         result = round((result > 0).mean() * 100, 2)
         code = int(result < 4.0)
 
+    if result < 10:
+        score = round((result / 10) * 50, 2)
+    else:
+        score = round(50 + (result - 10) * 5 / 9, 2)
+
     return [{
         'code': code,
         'description': descriptions[code],
         'result': result,
+        'score': score
     }]
 
