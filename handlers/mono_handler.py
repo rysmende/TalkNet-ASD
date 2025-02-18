@@ -53,7 +53,9 @@ class MONOHandler(BaseHandler):
             try:
                 data = json.loads(data)
             except:
+                # USED WHEN BENCHMARKING (SENDING VIDEO DIRECTLY)
                 is_dict = False
+                result_object_name = VIDEO_TEMP
                 with open(VIDEO_TEMP, 'wb') as out_file:
                     out_file.write(data)
 
@@ -73,21 +75,48 @@ class MONOHandler(BaseHandler):
             )
         print('DL: ', time.time() - cur_time)
         
-        # new_res_object_name = VIDEO_TEMP
-        cur_time = time.time()
+        # cur_time = time.time()
 
-        if result_object_name[-5:] == '.webm':
-            command = f'ffmpeg -y -fflags +genpts -i {result_object_name} -qscale:v 2 ' +\
-                f'-max_muxing_queue_size 1024 -async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT}'
-            os.system(command)
-        else:
-            command = f'ffmpeg -y -i {result_object_name} -qscale:v 2 ' +\
-                f'-async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT}'
-            os.system(command)
+        # if result_object_name[-5:] == '.webm':
+        #     command = f'ffmpeg -y -fflags +genpts -i {result_object_name} -qscale:v 2 ' +\
+        #         f'-max_muxing_queue_size 1024 -async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT}'
+        #     os.system(command)
+        # else:
+        #     command = f'ffmpeg -y -i {result_object_name} -qscale:v 2 ' +\
+        #         f'-async 1 -r 25 -vf scale="-2:640" {VIDEO_OUTPUT}'
+        #     os.system(command)
 
-        command = f'ffmpeg -y -i {VIDEO_OUTPUT} -qscale:a 0 -ac 1 -vn ' +\
-            f'-threads 10 -ar 16000 {AUDIO_OUTPUT} -loglevel panic'
-        os.system(command)
+        # command = f'ffmpeg -y -i {VIDEO_OUTPUT} -qscale:a 0 -ac 1 -vn ' +\
+        #     f'-threads 10 -ar 16000 {VIDEO_OUTPUT} -loglevel panic'
+        # os.system(command)
+
+        cmd = ['ffmpeg', '-y']
+
+        if result_object_name.lower().endswith('.webm'):
+            cmd += ['-fflags', '+genpts']
+
+        cmd += ['-i', result_object_name]
+
+        cmd += [
+            '-vf', 'scale=-2:640',
+            '-qscale:v', '2',
+            '-async', '1',
+            '-r', '25'
+        ]
+
+        if result_object_name.lower().endswith('.webm'):
+            cmd += ['-max_muxing_queue_size', '1024']
+
+        cmd += [
+            '-qscale:a', '0',
+            '-ac', '1',
+            '-threads', '10',
+            '-ar', '16000'
+        ]
+
+        cmd += ['-loglevel', 'panic', VIDEO_OUTPUT]
+
+        subprocess.run(cmd, check=True)
 
         print('VP: ', time.time() - cur_time)
         # Base64 encode the image to avoid the framework throwing

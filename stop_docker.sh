@@ -1,0 +1,1 @@
+docker ps -a | grep asd | awk '{print $1}' | xargs docker stop
