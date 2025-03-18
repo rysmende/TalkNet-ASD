@@ -35,14 +35,15 @@ def postprocess_det(Y, v_path, a_path) -> dict:
 
 def track_shot(frameFaces: list):
     # CPU: Face tracking
-    print(frameFaces)
+    # print(frameFaces)
     while True:
         track = []
         for face in frameFaces[:]:
             if track == []:
                 track.append(face)
                 frameFaces.remove(face)
-            elif face['frame'] - track[-1]['frame'] <= MIN_FAILED_DET:
+            # elif face['frame'] - track[-1]['frame'] <= MIN_FAILED_DET:
+            else:
                 iou = __bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
                 if iou > IOU_THRESHOLD:
                     track.append(face)
@@ -186,7 +187,7 @@ def preprocess_talk(input_datas):
         videoFeature.append(face)
     vidcap.release()
     videoFeature = np.array(videoFeature)
-    print(videoFeature.shape)
+    # print(videoFeature.shape)
     length = min(
             (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100,
             videoFeature.shape[0] / 25

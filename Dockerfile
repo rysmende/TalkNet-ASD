@@ -65,6 +65,39 @@ RUN apt-get -y update
 RUN apt-get -y upgrade
 RUN apt-get install -y ffmpeg
 
+# INSTALLING CMAKE
+# RUN apt-get update && apt-get -y install build-essential libtool autoconf unzip wget
+# RUN apt-get -y install libssl-dev
+# RUN apt purge --auto-remove cmake
+# RUN mkdir ~/temp && \
+#     cd ~/temp && \
+#     wget https://cmake.org/files/v3.30/cmake-3.30.5.tar.gz && \
+#     tar -xzvf cmake-3.30.5.tar.gz && \
+#     cd cmake-3.30.5/ && \
+#     ./bootstrap && \
+#     make -j$(nproc) && \
+#     make install
+# RUN hash -r
+# RUN ln -s /usr/local/bin/cmake /usr/bin/cmake
+
+# INSTALLING FFMPEG NVIDIA
+# RUN apt-get -y install build-essential yasm cmake libtool libc6 libc6-dev unzip \
+#     wget libnuma1 libnuma-dev pkgconf
+# RUN wget https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz && \
+#     tar xzf nasm-2.15.05.tar.gz && \
+#     cd nasm-2.15.05 && \
+#     ./configure && make -j$(nproc) && make install && \
+#     cd .. && rm -rf nasm-2.15.05 nasm-2.15.05.tar.gz
+
+# RUN git clone https://git.videolan.org/git/ffmpeg/nv-codec-headers.git
+# RUN cd nv-codec-headers && make && make install && cd ..
+
+# RUN git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg/
+# RUN cd ffmpeg && PKG_CONFIG_PATH=/usr/lib/pkgconfig ./configure --enable-nonfree --enable-cuda-nvcc --enable-nvenc --enable-libnpp \
+#     --extra-cflags="-I/usr/local/cuda/include -I/usr/local/include" \
+#     --extra-ldflags=-L/usr/local/cuda/lib64 --disable-static --enable-shared && \
+#     make -j 8 && make install
+
 RUN mkdir /home/dependencies
 RUN cd /home/dependencies && \
     git clone https://github.com/hhj1897/face_detection.git && \
