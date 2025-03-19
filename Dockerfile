@@ -75,26 +75,26 @@ RUN cd /home/dependencies && \
 RUN pip install setuptools==69.5.1
 
 # Create two folder for models 
-RUN mkdir /home/model-server/model-store
+# RUN mkdir /home/model-server/model-store
 # Copy all required models and pipelines inside docker 
-COPY model_store /home/model-server/model-store
+# COPY model_store /home/model-server/model-store
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY config.properties /home/model-server/config.properties
+# COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+# COPY config.properties /home/model-server/config.properties
 
-# Giving rights for execute for entrypoint
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-    && mkdir -p /home/model-server/tmp \
-    && chown -R model-server /home/model-server
+# # Giving rights for execute for entrypoint
+# RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+#     && mkdir -p /home/model-server/tmp \
+#     && chown -R model-server /home/model-server
 
 # RUN mkdir -p /home/model-server/tmp \
 #     && chown -R model-server /home/model-server
 
 
 # GIVING rights to execute 
-RUN chown -R model-server /home/model-server/model-store
+# RUN chown -R model-server /home/model-server/model-store
 
-EXPOSE 8080 8081 8082
+# EXPOSE 8080 8081 8082
 
 # USER model-server
 # WORKDIR /home/model-server
