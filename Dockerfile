@@ -74,34 +74,6 @@ RUN cd /home/dependencies && \
 
 RUN pip install setuptools==69.5.1
 
-# Create two folder for models 
-# RUN mkdir /home/model-server/model-store
-# Copy all required models and pipelines inside docker 
-# COPY model_store /home/model-server/model-store
-
-# COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-# COPY config.properties /home/model-server/config.properties
-
-# # Giving rights for execute for entrypoint
-# RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-#     && mkdir -p /home/model-server/tmp \
-#     && chown -R model-server /home/model-server
-
-# RUN mkdir -p /home/model-server/tmp \
-#     && chown -R model-server /home/model-server
-
-
-# GIVING rights to execute 
-# RUN chown -R model-server /home/model-server/model-store
-
-# EXPOSE 8080 8081 8082
-
-# USER model-server
-# WORKDIR /home/model-server
-# ENV TEMP=/home/model-server/tmp
-# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-# CMD ["serve", "curl"]
-
 # Install FastAPI dependencies
 RUN pip install fastapi uvicorn python-multipart pydantic
 
@@ -122,7 +94,7 @@ RUN useradd -m appuser && \
 USER appuser
 
 # Expose port for FastAPI
-EXPOSE 8000
+EXPOSE 8080
 
 # Run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
