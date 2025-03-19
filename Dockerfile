@@ -96,18 +96,33 @@ RUN chown -R model-server /home/model-server/model-store
 
 EXPOSE 8080 8081 8082
 
-USER model-server
-WORKDIR /home/model-server
-ENV TEMP=/home/model-server/tmp
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-CMD ["serve", "curl"]
+# USER model-server
+# WORKDIR /home/model-server
+# ENV TEMP=/home/model-server/tmp
+# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+# CMD ["serve", "curl"]
 
-# # run Torchserve HTTP serve to respond to prediction requests
-# ENTRYPOINT ["torchserve", \
-#      "--start", \
-#      "--ncs", \
-#     #  "--ts-config=/home/model-server/config.properties", \
-#      "--models", \
-#      "mono.mar", \
-#      "--model-store", \
-#      "/home/model-server/model-store"]
+# Install FastAPI dependencies
+RUN pip install fastapi uvicorn python-multipart pydantic
+
+# FastAPI Configuration
+# Create app directory
+RUN mkdir -p /home/app
+WORKDIR /home/app
+
+# Copy application code
+COPY src/ /home/app/src/
+COPY app.py /home/app/
+
+# Create user for running the application
+RUN useradd -m appuser && \
+    chown -R appuser:appuser /home/app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port for FastAPI
+EXPOSE 8000
+
+# Run the application
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
